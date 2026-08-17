@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+jobs:
+  unit: 
+    name: Unit test (mocked, fast)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install UV
+        uses: astral-sh/setup-uv@v10
+        with:
+          enable-cache: true
+
+      - name: Sync dependecies
+        run: uv sync --frozen
+
+      - name: Run unit test
+        run: uv run --no-sync pytest -m "not integration" -v
+
+  integration: 
+    name: Integratiion test (real browser)
+    runs-on: ubuntu-latest
+    needs: unit
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps: 
+      - uses: actions/checkout@v4
+
+      - name: Install uv 
+        uses: astral-sh/setup-uv@v10
+        with:
+          enable-cache: true
+
+      - name: Sync dependecies
+        run: uv sync --frozen
+
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/checkout@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('uv.lock') }}
+
+      - name: Install browser + OS dependecies
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: uv run --no-sync playwright install --with-deps chromium
+
+      - name: Install OS dependecies only 
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: uv run --no-sync playwright install-deps chromium
+
+      - name: Run integration test 
+        run: uv run --no-sync pytest -m integration -v

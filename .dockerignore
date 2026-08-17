@@ -1,0 +1,43 @@
+# VCS / editors
+.git
+.git*
+.idea
+.vscode
+.DS_Store
+
+# Python
+__pycache__@patch("src.utils.BrowserSession.sync_playwright")
+*.pyc
+*.pyo
+*.pyd
+.Python
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.tox
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+
+# Env / secrets
+.env*
+
+# Virtualenvs (pip *and* uv)
+.venv
+venv
+env
+
+# pip cruft
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Project-specific
+tests
+scripts
+postman
+postgres-data
+
