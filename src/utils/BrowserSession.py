@@ -76,30 +76,34 @@ class BrowserSession:
         """
         # Start the Playwright driver process (must be paired with .stop() in close()).
         self.playwright = sync_playwright().start()
+        
+        try:
+            browser_options = {
+                "headless": self.headless,
+                # Suppresses the `navigator.webdriver` flag that basic
+                # bot-detection scripts check for.
+                "args": ["--disable-blink-features=AutomationControlled"],
+                # Lets callers override or extend any option above (e.g. proxy,
+                # executable_path, slow_mo) via constructor kwargs.
+                **self.launch_kwargs,
+            }
 
-        browser_options = {
-            "headless": self.headless,
-            # Suppresses the `navigator.webdriver` flag that basic
-            # bot-detection scripts check for.
-            "args": ["--disable-blink-features=AutomationControlled"],
-            # Lets callers override or extend any option above (e.g. proxy,
-            # executable_path, slow_mo) via constructor kwargs.
-            **self.launch_kwargs,
-        }
+            logger.info(f"Launching browser (headless={self.headless}, incognito={self.incognito})")
 
-        logger.info(f"Launching browser (headless={self.headless}, incognito={self.incognito})")
+            self.browser = self.playwright.chromium.launch(**browser_options)
 
-        self.browser = self.playwright.chromium.launch(**browser_options)
+            context_options = {
+                "user_agent": DEFAULT_USER_AGENT,
+                "viewport": {"width": 1920, "height": 1080},
+                "locale": "en-US",
+            }
 
-        context_options = {
-            "user_agent": DEFAULT_USER_AGENT,
-            "viewport": {"width": 1920, "height": 1080},
-            "locale": "en-US",
-        }
-
-        self.context = self.browser.new_context(**context_options)
-        self.page = self.context.new_page()
-
+            self.context = self.browser.new_context(**context_options)
+            self.page = self.context.new_page()
+        except Exception as e:
+            logger.error(e)
+            self.close()
+            raise
         return self
 
     def close(self) -> None:
