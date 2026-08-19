@@ -6,7 +6,7 @@
 .DS_Store
 
 # Python
-__pycache__@patch("src.utils.BrowserSession.sync_playwright")
+__pycache__/
 *.pyc
 *.pyo
 *.pyd

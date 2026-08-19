@@ -5,14 +5,23 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "dotenv>=0.9.9",
     "playwright>=1.62.0",
 ]
 
 [dependency-groups]
 dev = [
     "pytest>=9.1.1",
+    "ruff>=0.11.0",
 ]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+markers = [
+    "integration: requires real browser (playwright install chromium)",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"src/scrappers/*" = ["BLE001"]
+"src/utils/browser_session.py" = ["BLE001"]
