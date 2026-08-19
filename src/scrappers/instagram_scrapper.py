@@ -1,3 +1,4 @@
+import json
 import logging
 import time
 from pathlib import Path
@@ -24,6 +25,7 @@ CHALLENGE_SELECTORS = (
 )
 
 DEFAULT_SESSION_PATH = Path("data/session.json")
+DEFAULT_DATA_DIR = Path("data")
 
 
 class InstagramScrapper:
@@ -421,8 +423,44 @@ class InstagramScrapper:
 
     def get_follower_list(self):
         data = self._get_user_list(list_type="followers")
-        saver = DataSaver(data=data, filename="followers", output_dir=Path("data"))
+        saver = DataSaver(data=data, filename="followers", output_dir=DEFAULT_DATA_DIR)
         saver.save_json()
+
+    def get_non_followers(self) -> list[dict]:
+        """Compare followers and following lists, return users you follow who don't follow you back."""
+        followers_path = DEFAULT_DATA_DIR / "followers.json"
+        following_path = DEFAULT_DATA_DIR / "following.json"
+
+        if not followers_path.exists():
+            logger.error("No followers.json found at %s", followers_path)
+            return []
+        if not following_path.exists():
+            logger.error("No following.json found at %s", following_path)
+            return []
+
+        with open(followers_path, encoding="utf-8") as f:
+            followers = json.load(f)
+        with open(following_path, encoding="utf-8") as f:
+            following = json.load(f)
+
+        follower_usernames = {u["username"] for u in followers}
+        non_followers = [
+            u for u in following if u["username"] not in follower_usernames
+        ]
+
+        logger.info(
+            "Comparison: %d following, %d followers, %d don't follow you back",
+            len(following),
+            len(followers),
+            len(non_followers),
+        )
+
+        saver = DataSaver(
+            data=non_followers, filename="non_followers", output_dir=DEFAULT_DATA_DIR
+        )
+        saver.save_json()
+
+        return non_followers
 
     def _get_user_list(self, list_type: UserType) -> list[dict]:
         max_users = None
