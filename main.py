@@ -1,5 +1,15 @@
+from src.scrappers.InstagramScrapper import InstagramScrapper
+
+scrapper = InstagramScrapper("foor.rm", "RomeroMantilla12")
+
 def main():
-    print("Hello from instagram!")
+    scrapper.login()
+
+    scrapper.get_follower_list()
+
+    scrapper.get_following_list()
+    
+
 
 
 if __name__ == "__main__":
