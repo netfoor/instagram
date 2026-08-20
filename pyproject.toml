@@ -11,6 +11,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "mypy>=1.15.0",
     "pytest>=9.1.1",
     "ruff>=0.11.0",
 ]
@@ -25,3 +26,11 @@ markers = [
 [tool.ruff.lint.per-file-ignores]
 "src/scrappers/*" = ["BLE001"]
 "src/utils/browser_session.py" = ["BLE001"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = false
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+disable_error_code = ["union-attr"]

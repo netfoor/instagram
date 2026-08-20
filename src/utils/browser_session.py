@@ -48,21 +48,18 @@ class BrowserSession:
     def __init__(
         self,
         headless: bool = False,
-        incognito: bool = False,
         storage_state: str | Path | None = None,
         **launch_kwargs: Any,
     ):
         """
         Args:
             headless: Whether to launch Chromium without a visible UI window.
-            incognito: Reserved for toggling private/incognito-style browsing.
             storage_state: Path to a JSON file saved by ``context.storage_state()``.
                 When provided, the browser context is created from this state
                 (cookies + localStorage), skipping the login flow.
             **launch_kwargs: Extra kwargs forwarded to ``chromium.launch()``.
         """
         self.headless = headless
-        self.incognito = incognito
         self.storage_state = storage_state
         self.launch_kwargs = launch_kwargs
 
@@ -85,11 +82,7 @@ class BrowserSession:
                 **self.launch_kwargs,
             }
 
-            logger.info(
-                "Launching browser (headless=%s, incognito=%s)",
-                self.headless,
-                self.incognito,
-            )
+            logger.info("Launching browser (headless=%s)", self.headless)
 
             self.browser = self.playwright.chromium.launch(**browser_options)
 

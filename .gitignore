@@ -15,3 +15,6 @@ wheels/
 
 
 data/
+
+# Editor/IDE
+.vscode/

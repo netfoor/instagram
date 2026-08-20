@@ -1,3 +1,11 @@
+"""Instagram follower/following scraper using Playwright.
+
+Supports three authentication flows:
+- Session-based: load saved cookies from a previous ``--login`` run.
+- Manual: open browser, let the user log in, save the session.
+- Automated: fill credentials and submit (may trigger CAPTCHA).
+"""
+
 import json
 import logging
 import time
@@ -29,6 +37,20 @@ DEFAULT_DATA_DIR = Path("data")
 
 
 class InstagramScrapper:
+    """Scrapes followers and following lists from an Instagram account.
+
+    Primary workflow::
+
+        scrapper = InstagramScrapper(session_path="data/session.json")
+        scrapper.login()              # tries session, falls back to automated
+        scrapper.get_follower_list()  # saves data/followers.json
+        scrapper.get_following_list() # saves data/following.json
+        scrapper.get_non_followers()  # saves data/non_followers.json
+
+    For first-time setup, use ``--login`` to authenticate manually
+    and save the session for future runs.
+    """
+
     def __init__(
         self,
         username: str = "",
@@ -77,22 +99,6 @@ class InstagramScrapper:
                     return True
             except Exception:
                 logger.debug("Auth element '%s' not found", selector)
-                continue
-        return False
-
-    def _is_on_login_form(self) -> bool:
-        """Check if the login form is still visible."""
-        login_selectors = (
-            'input[name="email"]',
-            'input[name="pass"]',
-            'div[role="button"]:has-text("Log in")',
-        )
-        for selector in login_selectors:
-            try:
-                if self.session.page.locator(selector).first.is_visible(timeout=500):
-                    return True
-            except Exception:
-                logger.debug("Login element '%s' not found", selector)
                 continue
         return False
 
@@ -385,6 +391,10 @@ class InstagramScrapper:
         logger.error("Timed out waiting for challenge resolution")
 
     def go_to_profile(self) -> bool:
+        """Navigate to the logged-in user's profile page.
+
+        Returns True if the profile loaded, False otherwise.
+        """
         if not self.is_logged_in or not self.session:
             logger.error("Not logged in")
             return False
@@ -417,11 +427,13 @@ class InstagramScrapper:
             return False
 
     def get_following_list(self):
+        """Scrape the accounts you follow and save to data/following.json."""
         data = self._get_user_list(list_type="following")
         saver = DataSaver(data=data, filename="following", output_dir=Path("data"))
         saver.save_json()
 
     def get_follower_list(self):
+        """Scrape your followers and save to data/followers.json."""
         data = self._get_user_list(list_type="followers")
         saver = DataSaver(data=data, filename="followers", output_dir=DEFAULT_DATA_DIR)
         saver.save_json()
@@ -463,7 +475,14 @@ class InstagramScrapper:
         return non_followers
 
     def _get_user_list(self, list_type: UserType) -> list[dict]:
-        max_users = None
+        """Open the followers/following dialog, scroll to load all users, and collect them.
+
+        Args:
+            list_type: Either ``"followers"`` or ``"following"``.
+
+        Returns:
+            List of dicts with ``username``, ``full_name``, and ``profile_url``.
+        """
         try:
             if not self.go_to_profile():
                 return []
@@ -544,10 +563,6 @@ class InstagramScrapper:
                         seen_usernames.add(username)
                         users.append(user_data)
                         logger.info("  [%d] @%s", len(users), username)
-
-                        if max_users and len(users) >= max_users:
-                            logger.info("Reached max_users limit: %d", max_users)
-                            return users
 
                     except Exception as e:
                         logger.debug("Error extracting user: %s", e)
