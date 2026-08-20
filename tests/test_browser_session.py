@@ -6,11 +6,12 @@ Run:
     pytest -m integration -v         # requires `playwright install chromium`
     pytest -v                        # everything
 """
+
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.utils.BrowserSession import BrowserSession, DEFAULT_USER_AGENT
+from src.utils.browser_session import DEFAULT_USER_AGENT, BrowserSession
 
 
 def browser_session_mock_playwright_chain():
@@ -33,24 +34,30 @@ def browser_session_mock_playwright_chain():
     mock_sync_playwright_cm = MagicMock(name="sync_playwright()")
     mock_sync_playwright_cm.start.return_value = mock_playwright
 
-    return mock_sync_playwright_cm, mock_playwright, mock_browser, mock_context, mock_page
+    return (
+        mock_sync_playwright_cm,
+        mock_playwright,
+        mock_browser,
+        mock_context,
+        mock_page,
+    )
 
 
 class TestStart:
-    @patch("src.utils.BrowserSession.sync_playwright")
+    @patch("src.utils.browser_session.sync_playwright")
     def test_headless_flag_is_forwarded(self, mock_sync_playwright):
-        cm, pw, browser, context, page = browser_session_mock_playwright_chain()
+        cm, pw, _browser, _context, _page = browser_session_mock_playwright_chain()
         mock_sync_playwright.return_value = cm
 
         session = BrowserSession(headless=True).start()
 
         launch_kwargs = pw.chromium.launch.call_args.kwargs
         assert launch_kwargs["headless"] is True
-        assert session.browser is browser
+        assert session.browser is _browser
 
-    @patch("src.utils.BrowserSession.sync_playwright")
+    @patch("src.utils.browser_session.sync_playwright")
     def test_anti_automation_arg_always_present(self, mock_sync_playwright):
-        cm, pw, browser, context, page = browser_session_mock_playwright_chain()
+        cm, pw, _browser, _context, _page = browser_session_mock_playwright_chain()
         mock_sync_playwright.return_value = cm
 
         BrowserSession().start()
@@ -58,9 +65,9 @@ class TestStart:
         launch_kwargs = pw.chromium.launch.call_args.kwargs
         assert "--disable-blink-features=AutomationControlled" in launch_kwargs["args"]
 
-    @patch("src.utils.BrowserSession.sync_playwright")
+    @patch("src.utils.browser_session.sync_playwright")
     def test_extra_launch_kwargs_are_merged_in(self, mock_sync_playwright):
-        cm, pw, browser, context, page = browser_session_mock_playwright_chain()
+        cm, pw, _browser, _context, _page = browser_session_mock_playwright_chain()
         mock_sync_playwright.return_value = cm
 
         BrowserSession(slow_mo=50).start()
@@ -68,9 +75,9 @@ class TestStart:
         launch_kwargs = pw.chromium.launch.call_args.kwargs
         assert launch_kwargs["slow_mo"] == 50
 
-    @patch("src.utils.BrowserSession.sync_playwright")
+    @patch("src.utils.browser_session.sync_playwright")
     def test_context_uses_expected_fingerprint(self, mock_sync_playwright):
-        cm, pw, browser, context, page = browser_session_mock_playwright_chain()
+        cm, _pw, browser, _context, _page = browser_session_mock_playwright_chain()
         mock_sync_playwright.return_value = cm
 
         BrowserSession().start()
@@ -80,9 +87,9 @@ class TestStart:
         assert context_kwargs["viewport"] == {"width": 1920, "height": 1080}
         assert context_kwargs["locale"] == "en-US"
 
-    @patch("src.utils.BrowserSession.sync_playwright")
+    @patch("src.utils.browser_session.sync_playwright")
     def test_page_is_created_from_context(self, mock_sync_playwright):
-        cm, pw, browser, context, page = browser_session_mock_playwright_chain()
+        cm, _pw, _browser, context, page = browser_session_mock_playwright_chain()
         mock_sync_playwright.return_value = cm
 
         session = BrowserSession().start()
@@ -96,9 +103,9 @@ class TestClose:
         # playwright/browser are still None if start() never ran
         BrowserSession().close()
 
-    @patch("src.utils.BrowserSession.sync_playwright")
+    @patch("src.utils.browser_session.sync_playwright")
     def test_close_stops_browser_then_playwright(self, mock_sync_playwright):
-        cm, pw, browser, context, page = browser_session_mock_playwright_chain()
+        cm, pw, browser, _context, _page = browser_session_mock_playwright_chain()
         mock_sync_playwright.return_value = cm
 
         session = BrowserSession().start()
@@ -109,25 +116,24 @@ class TestClose:
 
 
 class TestContextManager:
-    @patch("src.utils.BrowserSession.sync_playwright")
+    @patch("src.utils.browser_session.sync_playwright")
     def test_enter_returns_started_session(self, mock_sync_playwright):
-        cm, pw, browser, context, page = browser_session_mock_playwright_chain()
+        cm, _pw, _browser, _context, page = browser_session_mock_playwright_chain()
         mock_sync_playwright.return_value = cm
 
         with BrowserSession() as session:
             assert session.page is page
 
-    @patch("src.utils.BrowserSession.sync_playwright")
+    @patch("src.utils.browser_session.sync_playwright")
     def test_exit_closes_even_if_body_raises(self, mock_sync_playwright):
-        cm, pw, browser, context, page = browser_session_mock_playwright_chain()
+        cm, _pw, browser, _context, _page = browser_session_mock_playwright_chain()
         mock_sync_playwright.return_value = cm
 
-        with pytest.raises(ValueError):
-            with BrowserSession():
-                raise ValueError("boom")
+        with pytest.raises(ValueError), BrowserSession():
+            raise ValueError("boom")
 
         browser.close.assert_called_once()
-        pw.stop.assert_called_once()
+        cm.start.return_value.stop.assert_called_once()
 
 
 @pytest.mark.integration
